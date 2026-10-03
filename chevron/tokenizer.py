@@ -195,8 +195,11 @@ def tokenize(template, def_ldel='{{', def_rdel='}}'):
         # If we are a set delimiter tag
         if tag_type == 'set delimiter':
             # Then get and set the delimiters
-            dels = tag_key.strip().split(' ')
-            l_del, r_del = dels[0], dels[-1]
+            dels = tag_key.split()
+            if len(dels) != 2:
+                raise ChevronError('invalid set delimiter tag '
+                                   'at line {0}'.format(_CURRENT_LINE))
+            l_del, r_del = dels
 
         # If we are a section tag
         elif tag_type in ['section', 'inverted section']:
@@ -228,13 +231,16 @@ def tokenize(template, def_ldel='{{', def_rdel='}}'):
 
         # Which if we are
         if is_standalone:
-            # Remove the stuff before the newline
-            template = template.split('\n', 1)[-1]
+            # Remove the whitespace and the newline to our right
+            if '\n' in template:
+                template = template.split('\n', 1)[1]
+            else:
+                template = ''
 
             # Partials need to keep the spaces on their left
             if tag_type != 'partial':
                 # But other tags don't
-                literal = literal.rstrip(' ')
+                literal = literal.rstrip(' \t')
 
         # Start yielding
         # Ignore literals that are empty
