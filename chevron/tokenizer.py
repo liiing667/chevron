@@ -62,6 +62,15 @@ def r_sa_check(template, tag_type, is_standalone):
         return False
 
 
+def parse_set_delimiters(tag_key, line):
+    """Parse the two delimiters from a set delimiter tag"""
+    dels = tag_key.split()
+    if len(dels) != 2 or not all(dels):
+        raise ChevronError('invalid set delimiter tag '
+                           'at line {0}'.format(line))
+    return dels
+
+
 def parse_tag(template, l_del, r_del):
     """Parse a tag from a template"""
     global _CURRENT_LINE
@@ -195,8 +204,7 @@ def tokenize(template, def_ldel='{{', def_rdel='}}'):
         # If we are a set delimiter tag
         if tag_type == 'set delimiter':
             # Then get and set the delimiters
-            dels = tag_key.strip().split(' ')
-            l_del, r_del = dels[0], dels[-1]
+            l_del, r_del = parse_set_delimiters(tag_key, _CURRENT_LINE)
 
         # If we are a section tag
         elif tag_type in ['section', 'inverted section']:
@@ -228,13 +236,16 @@ def tokenize(template, def_ldel='{{', def_rdel='}}'):
 
         # Which if we are
         if is_standalone:
-            # Remove the stuff before the newline
-            template = template.split('\n', 1)[-1]
+            # Remove the whitespace and the newline to our right
+            if '\n' in template:
+                template = template.split('\n', 1)[1]
+            else:
+                template = ''
 
             # Partials need to keep the spaces on their left
             if tag_type != 'partial':
                 # But other tags don't
-                literal = literal.rstrip(' ')
+                literal = literal.rstrip(' \t')
 
         # Start yielding
         # Ignore literals that are empty
@@ -242,7 +253,7 @@ def tokenize(template, def_ldel='{{', def_rdel='}}'):
             yield ('literal', literal)
 
         # Ignore comments and set delimiters
-        if tag_type not in ['comment', 'set delimiter?']:
+        if tag_type not in ['comment', 'set delimiter']:
             yield (tag_type, tag_key)
 
     # If there are any open sections when we're done

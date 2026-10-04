@@ -86,6 +86,67 @@ class ExpandedCoverage(unittest.TestCase):
 
         self.assertRaises(SyntaxError, chevron.render, **args)
 
+    def test_standalone_section_tags_are_removed(self):
+        args = {
+            'template': '\t{{#items}}\n\t{{name}}\n\t{{/items}}\n',
+            'data': {'items': [
+                {'name': 'Ada'},
+                {'name': 'Linus'},
+            ]},
+        }
+
+        result = chevron.render(**args)
+
+        self.assertEqual(result, '\tAda\n\tLinus\n')
+
+    def test_inline_section_tag_keeps_same_line(self):
+        args = {
+            'template': 'before {{#items}}\n{{name}}\n{{/items}}\nafter',
+            'data': {'items': [{'name': 'Ada'}]},
+        }
+
+        result = chevron.render(**args)
+
+        self.assertEqual(result, 'before \nAda\nafter')
+
+    def test_set_delimiter_in_section(self):
+        args = {
+            'template': '{{#items}}\n{{=<% %>=}}\n<%name%>\n'
+                        '<%/items%>\n',
+            'data': {'items': [
+                {'name': 'Ada'},
+                {'name': 'Linus'},
+            ]},
+        }
+
+        result = chevron.render(**args)
+
+        self.assertEqual(result, 'Ada\nLinus\n')
+
+    def test_invalid_set_delimiter_tag(self):
+        templates = [
+            '{{= bad!}}',
+            '{{=<% %>}}',
+            '{{= =}}',
+            '{{=  =}}',
+            '{{=<% =}}',
+            '{{= %>=}}',
+        ]
+
+        for template in templates:
+            self.assertRaises(chevron.ChevronError,
+                              chevron.render, template)
+
+    def test_unescaped_variable_tags(self):
+        args = {
+            'template': '{{{name}}}\n{{&name}}',
+            'data': {'name': '<b>&\'\"</b>'},
+        }
+
+        result = chevron.render(**args)
+
+        self.assertEqual(result, '<b>&\'\"</b>\n<b>&\'\"</b>')
+
     def test_unicode_basic(self):
         args = {
             'template': '(╯°□°）╯︵ ┻━┻'
